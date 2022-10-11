@@ -1,12 +1,13 @@
 /*
  * Application.h
  *
- *  Created on: 4/13/2022
- *      Author: Colton Tshduy
+ *  Created on: 4/13/2022 Author: Colton Tshduy
  */
 
 /* Arduino Includes */
 #include <Arduino.h>
+#include <X9C10X.h>
+
 
 /* HAL Includes */
 #include <HAL.h>
@@ -17,13 +18,16 @@
 
 /* Macros */
 #define US_IN_SECONDS 1000000 // microseconds in a second
+#define POT_MAX_R 96000 // maximum resistance of the X9C104 potentiometer
 
 struct _Application
 {
     // Holds the variables used in main.cpp
     // =========================================================================
-    // Timer initialization
+    // Timers
     SWTimer watchdog_timer;
+
+    // Potentiometer
 };
 typedef struct _Application Application;
 

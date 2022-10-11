@@ -6,7 +6,7 @@
  *
  * @ingroup default
  *
- * @author Colton Tshudy Contact: coltont@vt.edu
+ * @author Colton Tshudy [please add your names here!]
  *
  * @version 10/11/2022
  */
@@ -14,22 +14,28 @@
 #include <Arduino.h>
 #include <Application.h>
 #include <HAL.h>
+#include <X9C10X.h>
 
-Application app; // Application struct
+Application app;       // Application struct
+X9C10X pot(POT_MAX_R); // Digital potentiometer
 
 /**
  * Setup before loop
  */
 void setup()
 {
+  // Initializes the pins
+  InitializePins();
+
   // Begins UART communication
   Serial.begin(9600);
 
   // Constructs the application struct
   app = Application_construct();
 
-  // Initializes the pins
-  InitializePins();
+  // Potentiometer initialization
+  pot.begin(CS_PIN, INC_PIN, UD_PIN);
+  pot.setPosition(0, true);
 }
 
 /**
@@ -65,6 +71,9 @@ void Application_loop(Application *app_p)
 void InitializePins()
 {
   pinMode(LED_PIN, OUTPUT);
+  pinMode(CS_PIN, OUTPUT);
+  pinMode(INC_PIN, OUTPUT);
+  pinMode(UD_PIN, OUTPUT);
 }
 
 // Blinks an LED once a second as a visual indicator of processor hang
