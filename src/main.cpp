@@ -8,7 +8,7 @@
  *
  * @author Colton Tshudy [please add your names here!]
  *
- * @version 10/11/2022
+ * @version 10/12/2022
  */
 
 #include <Arduino.h>
@@ -19,7 +19,7 @@
 Application app;       // Application struct
 X9C10X pot(POT_MAX_R); // Digital potentiometer
 
-/**
+/** =================================================
  * Setup before loop
  */
 void setup()
@@ -38,7 +38,7 @@ void setup()
   pot.setPosition(0, true);
 }
 
-/**
+/** =================================================
  * Primary loop
  */
 void loop()
@@ -50,6 +50,9 @@ void loop()
   Application_loop(&app);
 }
 
+/**
+ * First time setup for the Application
+ */
 Application Application_construct()
 {
   Application app;
@@ -61,6 +64,9 @@ Application Application_construct()
   return app;
 }
 
+/** =================================================
+ * Primary functions for each loop of the application
+ */
 void Application_loop(Application *app_p)
 {
   static uint8_t count = 1;
@@ -77,11 +83,11 @@ void Application_loop(Application *app_p)
     count++;
   }
 
-  if(count == 100){
+  if (count == 100)
+  {
     count = 1;
     pot.setPosition(0);
   }
-
 }
 
 /**
