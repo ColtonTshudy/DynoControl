@@ -26,6 +26,7 @@ struct _Application
     // =========================================================================
     // Timers
     SWTimer watchdog_timer;
+    SWTimer pot_test_timer;
 
     // Potentiometer
 };
