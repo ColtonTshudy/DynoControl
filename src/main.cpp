@@ -34,7 +34,7 @@ void setup()
   app = Application_construct();
 
   // Potentiometer initialization
-  pot.begin(CS_PIN, INC_PIN, UD_PIN);
+  pot.begin(INC_PIN, UD_PIN, CS_PIN);
   pot.setPosition(0, true);
 }
 
@@ -56,13 +56,32 @@ Application Application_construct()
 
   // Timer initialization
   app.watchdog_timer = SWTimer_construct(US_IN_SECONDS);
+  app.pot_test_timer = SWTimer_construct(50000); // every 0.05 seconds
 
   return app;
 }
 
 void Application_loop(Application *app_p)
 {
+  static uint8_t count = 1;
+
   // TODO
+
+  // For now, cycles between 0% and 100% throttle
+
+  if (SWTimer_expired(&app_p->pot_test_timer))
+  {
+    pot.incr();
+    Serial.println(pot.getOhm());
+    SWTimer_start(&app_p->pot_test_timer);
+    count++;
+  }
+
+  if(count == 100){
+    count = 1;
+    pot.setPosition(0);
+  }
+
 }
 
 /**
