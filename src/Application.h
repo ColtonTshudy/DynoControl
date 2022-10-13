@@ -24,7 +24,6 @@
 
 /* Macros */
 #define US_IN_SECONDS 1000000 // microseconds in a second
-#define POT_MAX_R 96000       // maximum resistance of the X9C104 potentiometer
 
 /** =================================================
  * Primary struct for the application
@@ -49,7 +48,10 @@ void InitializePins();
 /** Heatbeat of the Arduino */
 void WatchdogLED(Application *app_p);
 
-/** Prints red/inf ac/dc measurements to the screen for verification purposes */
-void PrintDebug(Application *app_p);
+/** Prints a value with a given prefix and suffix */
+void sprintln(String pre, uint32_t Val, String suf);
+
+/** Cycles potentiometer for testing */
+void potSweep(Application *app_p);
 
 #endif /* APPLICATION_H_ */
