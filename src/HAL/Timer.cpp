@@ -5,7 +5,7 @@
  *      Author: Colton Tshudy
  */
 
-#include <Timer.h>
+#include <HAL\Timer.h>
 
 // Construct a new timer with a wait time in microseconds
 SWTimer SWTimer_construct(uint64_t waitTime)

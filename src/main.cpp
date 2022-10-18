@@ -13,7 +13,8 @@
 
 #include <Arduino.h>
 #include <Application.h>
-#include <HAL.h>
+#include <HAL\HAL.h>
+#include <HAL\Timer.h>
 #include <X9C10X.h>
 
 Application app;       // Application struct
@@ -25,7 +26,7 @@ X9C10X pot(POT_MAX_R); // Digital potentiometer
 void setup()
 {
   // Initializes the pins
-  InitializePins(); 
+  InitializePins();
 
   // Begins UART communication
   Serial.begin(9600);
@@ -36,13 +37,6 @@ void setup()
   // Potentiometer initialization
   pot.begin(INC_PIN, UD_PIN, CS_PIN);
   pot.setPosition(0, true);
-
-  pot.setPosition(49, 1);
-
-  delay(100);
-  sprintln("Max Ohms: ", pot.getMaxOhm(), " Ohms");
-  sprintln("High side ohms: ", pot.getOhm(), " Ohms");
-  sprintln("Low side ohms: ", pot.getMaxOhm() - pot.getOhm(), " Ohms");
 }
 
 /** =================================================
@@ -68,25 +62,128 @@ Application Application_construct()
   app.watchdog_timer = SWTimer_construct(US_IN_SECONDS);
   app.pot_test_timer = SWTimer_construct(100000); // every 0.05 seconds
 
+  app.pot_v = 0;
+  app.pot_ohms = 0;
+  app.pot_pos = 0;
+
   return app;
 }
 
 /** =================================================
- * Primary functions for each loop of the application
+ * Code executed for each loop of the application
  */
 void Application_loop(Application *app_p)
 {
-  static uint32_t lastOhms = pot.getOhm();
+  // Track last potentiometer position
+  static uint32_t old_pot_pos = 0;
 
-  // reply only when you receive data:
-  if (Serial.available() > 0) {
-    // read the incoming byte:
+  // Poll potentiometer
+  pollPotentiometer(app_p);
+
+  // Check for pending serial command
+  if (Serial.available() > 0)
+  {
     String input = Serial.readString();
+    Serial.print(input); // echo
 
-    // say what you got:
-    Serial.print("I received: " + input);
+    executeCommand(input);
   }
-  
+
+  if (app_p->pot_pos != old_pot_pos)
+  {
+    sprintln_uint("  New pot pos: ", app_p->pot_pos, "%");
+    sprintln_uint("  New pot pos: ", app_p->pot_ohms, " Ohms");
+    sprintln_double("  New throttle voltage: ", app_p->pot_v, " V");
+  }
+
+  old_pot_pos = app_p->pot_pos;
+}
+
+
+/**
+ * Polls the potentiometer object for new values, and uses the ADC to measure
+ * the actual voltage at the divider created by the potentiometer
+ */
+void pollPotentiometer(Application *app_p)
+{
+  // Poll for new potentiometer values
+  app_p->pot_v = double(analogRead(POT_MES_PIN)) / ADC_MAX * V_POT_MAX;
+  app_p->pot_ohms = pot.getOhm();
+  app_p->pot_pos = pot.getPosition();
+}
+
+/**
+ * Executs a command based on the serial input string
+ */
+void executeCommand(String input)
+{
+  // Return string, if needed
+  String output_text = "Fail";
+  String arg = "";
+
+  input.toLowerCase();
+
+  // Gets first char of command, and reset index
+  char cmd_type = nextWord(input, 1).charAt(0);
+
+  // Executs the command based on the char, otherwise gives error message
+  switch (cmd_type)
+  {
+  case 't':
+    arg = nextWord(input, 0);
+    output_text = arg;
+    pot.setPosition(arg.toInt());
+    break;
+  default:
+    output_text = "Unknown command type: ";
+    output_text = output_text + cmd_type;
+    Serial.println(output_text);
+    break;
+  }
+}
+
+/**
+ * Gets the next word from the string
+ */
+String nextWord(String input, bool reset)
+{
+  static unsigned int cur = 0; // cursor for string index
+
+  if (reset)
+    cur = 0;
+
+  if(cur >= input.length())
+    return "NULL";
+
+  // Attempt to find a word
+  _parserStates state = Spaces; // initial state for the parser FSM
+  for (unsigned int i = cur; i < input.length(); i++)
+  {
+    char c = input.charAt(i);
+
+    switch(state)
+    {
+      case Spaces:
+        if(c == ASCII_ENTER || c == ASCII_SPACE)
+          ; // stay in Spaces state
+        else{
+          cur = i; // move cursor to after spaces
+          state = Reading;
+        }
+      break;
+
+      case Reading:
+        if(c == ASCII_ENTER || c == ASCII_SPACE)
+        {
+          String word = input.substring(cur, i);
+          cur = i+1;
+          return word;
+        }
+      break;
+    }
+  }
+
+  return "NULL";
 }
 
 /**
@@ -113,15 +210,23 @@ void WatchdogLED(Application *app_p)
   }
 }
 
-void sprintln(String pre, uint32_t val, String suf){
+void sprintln_uint(String pre, uint32_t val, String suf)
+{
+  String output = pre + val + suf;
+  Serial.println(output);
+}
+
+void sprintln_double(String pre, double val, String suf)
+{
   String output = pre + val + suf;
   Serial.println(output);
 }
 
 /**
  * Cycles potentiometer between 0 and 99% for testing
-*/
-void potSweep(Application *app_p){
+ */
+void potSweep(Application *app_p)
+{
   static uint8_t count = 0;
 
   // For now, cycles between 0% and 99% throttle
