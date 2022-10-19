@@ -3,7 +3,7 @@
  *
  *  Created on: 4/15/2022
  *      Author: Colton Tshduy
- */     
+ */
 
 /* Arduino Driver Includes */
 #include <Arduino.h>
@@ -14,11 +14,11 @@
 struct _SWTimer
 {
     // The number of microseconds which must elapse before the timer expires
-    uint64_t waitTime_us;
+    uint64_t waitTime_ms;
 
     // The starting counter value of the hardware timer, set when the timer is started
     uint32_t startCounter;
-}; 
+};
 typedef struct _SWTimer SWTimer;
 
 // Constructs a Software timer. All timers must be constructed before starting them.

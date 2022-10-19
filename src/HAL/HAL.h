@@ -13,7 +13,7 @@
 /* Arduino Includes */
 #include <Arduino.h>
 
-#ifndef HAL_H_
+#ifndef HAL_H_a
 #define HAL_H_
 
 // General HAL Macros
@@ -28,12 +28,12 @@
 #define UD_PIN 2
 
 // Analog measurement macros
-#define POT_MES_PIN A0
-#define ADC_MAX 1024
-#define V_POT_MAX 5
+#define POT_MES_PIN A0 //
+#define ADC_MAX 1024   // steps
+#define V_POT_MAX 4.71 // V
+#define ADC_SETTLE 20  // ms
 
 // Settings for potentiometer
 #define POT_MAX_R 100000 // maximum resistance of the X9C104 potentiometer
-
 
 #endif /* HAL_H_ */

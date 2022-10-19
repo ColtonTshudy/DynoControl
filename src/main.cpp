@@ -59,12 +59,16 @@ Application Application_construct()
   Application app;
 
   // Timer initialization
-  app.watchdog_timer = SWTimer_construct(US_IN_SECONDS);
-  app.pot_test_timer = SWTimer_construct(100000); // every 0.05 seconds
+  app.watchdog_timer = SWTimer_construct(MS_IN_SECONDS);
+  app.pot_test_timer = SWTimer_construct(100);            // every 0.05 seconds
+  app.pot_test_timer = SWTimer_construct(MS_IN_SECONDS);  // default initialization
+  app.adc_settling_timer = SWTimer_construct(ADC_SETTLE); // ADC timer for settling time
 
   app.pot_v = 0;
   app.pot_ohms = 0;
   app.pot_pos = 0;
+
+  app.new_value_flag = 0;
 
   return app;
 }
@@ -86,11 +90,18 @@ void Application_loop(Application *app_p)
     String input = Serial.readString();
     Serial.print(input); // echo
 
-    executeCommand(input);
+    executeCommand(app_p, input);
   }
 
   if (app_p->pot_pos != old_pot_pos)
   {
+    SWTimer_start(&app_p->adc_settling_timer);
+    app_p->new_value_flag = 1;
+  }
+
+  if (SWTimer_expired(&app_p->adc_settling_timer) && app_p->new_value_flag)
+  {
+    app_p->new_value_flag = 0;
     sprintln_uint("  New pot pos: ", app_p->pot_pos, "%");
     sprintln_uint("  New pot pos: ", app_p->pot_ohms, " Ohms");
     sprintln_double("  New throttle voltage: ", app_p->pot_v, " V");
@@ -98,7 +109,6 @@ void Application_loop(Application *app_p)
 
   old_pot_pos = app_p->pot_pos;
 }
-
 
 /**
  * Polls the potentiometer object for new values, and uses the ADC to measure
@@ -115,7 +125,7 @@ void pollPotentiometer(Application *app_p)
 /**
  * Executs a command based on the serial input string
  */
-void executeCommand(String input)
+void executeCommand(Application *app_p, String input)
 {
   // Return string, if needed
   String output_text = "Fail";
@@ -129,17 +139,36 @@ void executeCommand(String input)
   // Executs the command based on the char, otherwise gives error message
   switch (cmd_type)
   {
-  case 't':
+  case 't': // Throttle set command
     arg = nextWord(input, 0);
-    output_text = arg;
-    pot.setPosition(arg.toInt());
+    if (isNumeric(arg))
+      pot.setPosition(arg.toInt());
+    else if (arg.charAt(0) == 'u')
+      pot.incr();
+    else if (arg.charAt(0) == 'd')
+      pot.decr();
+    else
+      output_text = "  Bad argument for command 't': " + arg;
     break;
+
+  case 'w': // Wait command
+    arg = nextWord(input, 0);
+    if (isNumeric(arg))
+    {
+      app_p->wait_command_timer = SWTimer_construct(arg.toInt());
+      SWTimer_start(&app_p->wait_command_timer);
+    }
+    else
+      output_text = "  Bad argument for command 'w': " + arg;
+    break;
+
   default:
-    output_text = "Unknown command type: ";
-    output_text = output_text + cmd_type;
-    Serial.println(output_text);
+    output_text = "  Unknown command type: " + cmd_type;
     break;
   }
+
+  if (!output_text.equals("Fail"))
+    Serial.println(output_text);
 }
 
 /**
@@ -152,7 +181,7 @@ String nextWord(String input, bool reset)
   if (reset)
     cur = 0;
 
-  if(cur >= input.length())
+  if (cur >= input.length())
     return "NULL";
 
   // Attempt to find a word
@@ -161,24 +190,25 @@ String nextWord(String input, bool reset)
   {
     char c = input.charAt(i);
 
-    switch(state)
+    switch (state)
     {
-      case Spaces:
-        if(c == ASCII_ENTER || c == ASCII_SPACE)
-          ; // stay in Spaces state
-        else{
-          cur = i; // move cursor to after spaces
-          state = Reading;
-        }
+    case Spaces:
+      if (c == ASCII_ENTER || c == ASCII_SPACE)
+        ; // stay in Spaces state
+      else
+      {
+        cur = i; // move cursor to after spaces
+        state = Reading;
+      }
       break;
 
-      case Reading:
-        if(c == ASCII_ENTER || c == ASCII_SPACE)
-        {
-          String word = input.substring(cur, i);
-          cur = i+1;
-          return word;
-        }
+    case Reading:
+      if (c == ASCII_ENTER || c == ASCII_SPACE)
+      {
+        String word = input.substring(cur, i);
+        cur = i + 1;
+        return word;
+      }
       break;
     }
   }
@@ -220,6 +250,23 @@ void sprintln_double(String pre, double val, String suf)
 {
   String output = pre + val + suf;
   Serial.println(output);
+}
+
+/**
+ * Checks if a string is made up of only numeric characters
+ *
+ * @param str String to check
+ *
+ * @returns true if string is numeric, false otherwise
+ */
+bool isNumeric(String str)
+{
+  for (unsigned int i = 0; i < str.length(); i++)
+  {
+    if (!isdigit(str.charAt(i)))
+      return false;
+  }
+  return true;
 }
 
 /**

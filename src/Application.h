@@ -24,11 +24,12 @@
 
 typedef enum
 {
-    Spaces, Reading
-} _parserStates;   // states for the string word parser
+    Spaces,
+    Reading
+} _parserStates; // states for the string word parser
 
 /* Macros */
-#define US_IN_SECONDS 1000000 // microseconds in a second
+#define MS_IN_SECONDS 1000 // milliseconds in a second
 #define ASCII_SPACE 32
 #define ASCII_ENTER 10
 
@@ -39,11 +40,15 @@ struct _Application
 {
     // Variables used in main.cpp Timers
     SWTimer watchdog_timer;
+    SWTimer wait_command_timer;
     SWTimer pot_test_timer;
+    SWTimer adc_settling_timer;
 
     uint32_t pot_ohms;
     double pot_v;
     uint8_t pot_pos;
+
+    bool new_value_flag;
 };
 typedef struct _Application Application;
 
@@ -72,9 +77,12 @@ void sprintln_double(String pre, double val, String suf);
 void potSweep(Application *app_p);
 
 /** Parses an input for valid commands */
-void executeCommand(String input);
+void executeCommand(Application *app_p, String input);
 
 /** Parses an input for valid commands */
 String nextWord(String input, bool reset);
+
+/** Returns true if the given string is only numeric */
+bool isNumeric(String str);
 
 #endif /* APPLICATION_H_ */
