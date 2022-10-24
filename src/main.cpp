@@ -85,7 +85,7 @@ void Application_loop(Application *app_p)
   pollPotentiometer(app_p);
 
   // Check for pending serial command
-  if (Serial.available() > 0)
+  if (Serial.available() > 0 && SWTimer_expired(&app_p->wait_command_timer)) // TODO turn off serial when WAITIING since serial commands queue then execute all at once!
   {
     String input = Serial.readString();
     Serial.print(input); // echo
@@ -149,6 +149,22 @@ void executeCommand(Application *app_p, String input)
       pot.decr();
     else
       output_text = "  Bad argument for command 't': " + arg;
+    break;
+
+  case 'i': // Increment command
+    arg = nextWord(input, 0);
+    if (isNumeric(arg))
+      pot.setPosition(app_p->pot_pos + arg.toInt());
+    else
+      output_text = "  Bad argument for command 'i': " + arg;
+    break;
+
+  case 'd': // Decrement command
+    arg = nextWord(input, 0);
+    if (isNumeric(arg))
+      pot.setPosition(app_p->pot_pos - arg.toInt());
+    else
+      output_text = "  Bad argument for command 'd': " + arg;
     break;
 
   case 'w': // Wait command
