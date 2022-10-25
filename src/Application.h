@@ -70,6 +70,9 @@ void WatchdogLED(Application *app_p);
 /** Prints a value with a given prefix and suffix */
 void sprintln_uint(String pre, uint32_t val, String suf);
 
+/** Prints data from the application struct */
+void sprintData(Application *app_p);
+
 /** Prints a value with a given prefix and suffix */
 void sprintln_double(String pre, double val, String suf);
 

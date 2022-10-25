@@ -17,6 +17,8 @@
 #include <HAL\Timer.h>
 #include <X9C10X.h>
 
+#define VERSION 0.3
+
 Application app;       // Application struct
 X9C10X pot(POT_MAX_R); // Digital potentiometer
 
@@ -30,6 +32,12 @@ void setup()
 
   // Begins UART communication
   Serial.begin(9600);
+
+  // Print version number
+  String startup_message = "";
+  startup_message.concat("Throttle Mapper Ver. ");
+  startup_message.concat(VERSION);
+  Serial.println(startup_message);
 
   // Constructs the application struct
   app = Application_construct();
@@ -102,9 +110,7 @@ void Application_loop(Application *app_p)
   if (SWTimer_expired(&app_p->adc_settling_timer) && app_p->new_value_flag)
   {
     app_p->new_value_flag = 0;
-    sprintln_uint("  New pot pos: ", app_p->pot_pos, "%");
-    sprintln_uint("  New pot pos: ", app_p->pot_ohms, " Ohms");
-    sprintln_double("  New throttle voltage: ", app_p->pot_v, " V");
+    sprintData(app_p); // TODO replace below with one function
   }
 
   old_pot_pos = app_p->pot_pos;
@@ -143,7 +149,7 @@ void executeCommand(Application *app_p, String input)
     arg = nextWord(input, 0);
     if (isNumeric(arg))
       pot.setPosition(arg.toInt());
-    else if (arg.charAt(0) == 'u')
+    else if (arg.charAt(0) == 'i')
       pot.incr();
     else if (arg.charAt(0) == 'd')
       pot.decr();
@@ -260,6 +266,22 @@ void sprintln_uint(String pre, uint32_t val, String suf)
 {
   String output = pre + val + suf;
   Serial.println(output);
+}
+
+void sprintData(Application *app_p)
+{
+  String data = "";
+  data.concat("  New pot pos: ");
+  data.concat(app_p->pot_pos);
+  data.concat("%\n");
+  data.concat("  New pot pos: ");
+  data.concat(app_p->pot_ohms);
+  data.concat(" Ohms\n");
+  data.concat("  New throttle voltage: ");
+  data.concat(app_p->pot_v);
+  data.concat(" V");
+
+  Serial.println(data);
 }
 
 void sprintln_double(String pre, double val, String suf)
