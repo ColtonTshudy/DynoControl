@@ -17,7 +17,7 @@
 #include <HAL\Timer.h>
 #include <X9C10X.h>
 
-#define VERSION 0.4
+#define VERSION 0.41
 
 Application app;       // Application struct
 X9C10X pot(POT_MAX_R); // Digital potentiometer
@@ -239,7 +239,8 @@ void executeCommand(Application *app_p, String input)
     break;
 
   default:
-    output_text = "  Unknown command type: " + cmd_type;
+    output_text = "  Unknown command type: ";
+    output_text.concat(cmd_type);
     break;
   }
 
