@@ -19,7 +19,7 @@
 // General HAL Macros
 #define BAUDRATE 9600
 
-// --Pin Macros-- Pins for LEDs
+// Pins for LEDs
 #define LED_PIN 13
 
 // Pins for 100k Potentiometer
@@ -28,10 +28,10 @@
 #define UD_PIN 2
 
 // Analog measurement macros
-#define POT_MES_PIN A0 //
-#define ADC_MAX 1024   // steps
-#define V_POT_MAX 4.71 // V
-#define ADC_SETTLE 20  // ms
+#define POT_MES_PIN A0     // potentiometer voltage monitoring pin
+#define ADC_MAX 1024       // steps
+#define V_POT_MAX 4.71     // V
+#define ADC_SETTLE_TIME 20 // ms
 
 // Settings for potentiometer
 #define POT_MAX_R 100000 // maximum resistance of the X9C104 potentiometer

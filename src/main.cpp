@@ -17,7 +17,7 @@
 #include <HAL\Timer.h>
 #include <X9C10X.h>
 
-#define VERSION 0.3
+#define VERSION 0.4
 
 Application app;       // Application struct
 X9C10X pot(POT_MAX_R); // Digital potentiometer
@@ -68,15 +68,17 @@ Application Application_construct()
 
   // Timer initialization
   app.watchdog_timer = SWTimer_construct(MS_IN_SECONDS);
-  app.pot_test_timer = SWTimer_construct(100);            // every 0.05 seconds
-  app.pot_test_timer = SWTimer_construct(MS_IN_SECONDS);  // default initialization
-  app.adc_settling_timer = SWTimer_construct(ADC_SETTLE); // ADC timer for settling time
+  app.pot_test_timer = SWTimer_construct(100);                 // every 0.05 seconds
+  app.pot_test_timer = SWTimer_construct(MS_IN_SECONDS);       // default initialization
+  app.adc_settling_timer = SWTimer_construct(ADC_SETTLE_TIME); // ADC timer for settling time
 
   app.pot_v = 0;
   app.pot_ohms = 0;
   app.pot_pos = 0;
 
   app.new_value_flag = 0;
+
+  app.serialState = Enabled;
 
   return app;
 }
@@ -92,28 +94,74 @@ void Application_loop(Application *app_p)
   // Poll potentiometer
   pollPotentiometer(app_p);
 
-  // Check for pending serial command
-  if (Serial.available() > 0 && SWTimer_expired(&app_p->wait_command_timer)) // TODO turn off serial when WAITIING since serial commands queue then execute all at once!
-  {
-    String input = Serial.readString();
-    Serial.print(input); // echo
+  // Handles serial inputs
+  handleSerialInput(app_p);
 
-    executeCommand(app_p, input);
-  }
-
+  // Check for change in data
   if (app_p->pot_pos != old_pot_pos)
   {
     SWTimer_start(&app_p->adc_settling_timer);
     app_p->new_value_flag = 1;
   }
 
+  // Wait for ADC to settle before reading
   if (SWTimer_expired(&app_p->adc_settling_timer) && app_p->new_value_flag)
   {
+    sprintData(app_p);
     app_p->new_value_flag = 0;
-    sprintData(app_p); // TODO replace below with one function
   }
 
   old_pot_pos = app_p->pot_pos;
+}
+
+/** =================================================
+ * Functions
+ */
+
+/**
+ * Checks if serial input to Ardino.
+ * Attempts to execute a command from serial input.
+ * Does not execute if the wait command is in play.
+ */
+void handleSerialInput(Application *app_p)
+{
+  _serialStates ss = app_p->serialState;
+
+  switch (ss)
+  {
+  case Enabled:
+    checkSerialRX(app_p);
+    if (!SWTimer_expired(&app_p->wait_command_timer))
+    {
+      ss = Waiting;
+      Serial.println("  waiting...");
+    }
+    break;
+
+  case Waiting:
+    if (SWTimer_expired(&app_p->wait_command_timer))
+    {
+      Serial.println("  ...done waiting");
+      ss = Enabled;
+    }
+    break;
+  }
+
+  app_p->serialState = ss;
+}
+
+// Checks serial RX pin for a new command, then attempts to execute it
+void checkSerialRX(Application *app_p)
+{
+  if (Serial.available() > 0)
+  {
+    String input = Serial.readString();
+
+    if (ECHO_EN)
+      Serial.print(input); // echo
+
+    executeCommand(app_p, input);
+  }
 }
 
 /**
@@ -149,17 +197,16 @@ void executeCommand(Application *app_p, String input)
     arg = nextWord(input, 0);
     if (isNumeric(arg))
       pot.setPosition(arg.toInt());
-    else if (arg.charAt(0) == 'i')
-      pot.incr();
-    else if (arg.charAt(0) == 'd')
-      pot.decr();
     else
       output_text = "  Bad argument for command 't': " + arg;
     break;
 
   case 'i': // Increment command
     arg = nextWord(input, 0);
-    if (isNumeric(arg))
+    if(arg.equals("NULL")){
+      pot.incr();
+    }
+    else if (isNumeric(arg))
       pot.setPosition(app_p->pot_pos + arg.toInt());
     else
       output_text = "  Bad argument for command 'i': " + arg;
@@ -167,7 +214,10 @@ void executeCommand(Application *app_p, String input)
 
   case 'd': // Decrement command
     arg = nextWord(input, 0);
-    if (isNumeric(arg))
+    if(arg.equals("NULL")){
+      pot.decr();
+    }
+    else if (isNumeric(arg))
       pot.setPosition(app_p->pot_pos - arg.toInt());
     else
       output_text = "  Bad argument for command 'd': " + arg;
@@ -182,6 +232,10 @@ void executeCommand(Application *app_p, String input)
     }
     else
       output_text = "  Bad argument for command 'w': " + arg;
+    break;
+
+  case 'r': // Read potentiometer command, effectively a dump
+    app_p->new_value_flag = 1;
     break;
 
   default:

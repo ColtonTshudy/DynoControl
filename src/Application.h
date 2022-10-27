@@ -22,16 +22,25 @@
 #ifndef APPLICATION_H_
 #define APPLICATION_H_
 
-typedef enum
-{
-    Spaces,
-    Reading
-} _parserStates; // states for the string word parser
+/* Settings */
+#define ECHO_EN 1
 
 /* Macros */
 #define MS_IN_SECONDS 1000 // milliseconds in a second
 #define ASCII_SPACE 32
 #define ASCII_ENTER 10
+
+typedef enum
+{
+    Enabled,
+    Waiting
+} _serialStates; // states for the serial reader
+
+typedef enum
+{
+    Spaces,
+    Reading
+} _parserStates; // states for the string word parser
 
 /** =================================================
  * Primary struct for the application
@@ -47,6 +56,8 @@ struct _Application
     uint32_t pot_ohms;
     double pot_v;
     uint8_t pot_pos;
+
+    _serialStates serialState;
 
     bool new_value_flag;
 };
@@ -66,6 +77,12 @@ void pollPotentiometer(Application *app_p);
 
 /** Heatbeat of the Arduino */
 void WatchdogLED(Application *app_p);
+
+/** Serial input state handler */
+void handleSerialInput(Application *app_p);
+
+/** Check serial RX and attempt to execute command */
+void checkSerialRX(Application *app_p);
 
 /** Prints a value with a given prefix and suffix */
 void sprintln_uint(String pre, uint32_t val, String suf);
