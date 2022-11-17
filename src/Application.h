@@ -33,8 +33,9 @@
 typedef enum
 {
     Enabled,
+    Linear,
     Waiting
-} _serialStates; // states for the serial reader
+} _appStates; // states for the serial reader
 
 typedef enum
 {
@@ -49,15 +50,21 @@ struct _Application
 {
     // Variables used in main.cpp Timers
     SWTimer watchdog_timer;
-    SWTimer wait_command_timer;
+    SWTimer wait_cmd_timer;
     SWTimer pot_test_timer;
     SWTimer adc_settling_timer;
+    SWTimer linear_cmd_timer;
 
     uint32_t pot_ohms;
     double pot_v;
     uint8_t pot_pos;
 
-    _serialStates serialState;
+    int target_pos;
+    int ramping_time;
+    int steps;
+    int step_time;
+
+    _appStates appState;
 
     bool new_value_flag;
 };
@@ -79,7 +86,7 @@ void pollPotentiometer(Application *app_p);
 void WatchdogLED(Application *app_p);
 
 /** Serial input state handler */
-void handleSerialInput(Application *app_p);
+void primaryFSM(Application *app_p);
 
 /** Check serial RX and attempt to execute command */
 void checkSerialRX(Application *app_p);

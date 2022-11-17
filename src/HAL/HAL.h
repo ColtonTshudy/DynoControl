@@ -17,7 +17,7 @@
 #define HAL_H_
 
 // General HAL Macros
-#define BAUDRATE 9600
+#define BAUDRATE 115200
 
 // Pins for LEDs
 #define LED_PIN 13
