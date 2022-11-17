@@ -17,7 +17,7 @@
 #include <HAL\Timer.h>
 #include <X9C10X.h>
 
-#define VERSION 0.41
+#define VERSION 0.55
 
 Application app;       // Application struct
 X9C10X pot(POT_MAX_R); // Digital potentiometer
@@ -31,7 +31,7 @@ void setup()
   InitializePins();
 
   // Begins UART communication
-  Serial.begin(9600);
+  Serial.begin(BAUDRATE);
 
   // Print version number
   String startup_message = "";
@@ -69,16 +69,22 @@ Application Application_construct()
   // Timer initialization
   app.watchdog_timer = SWTimer_construct(MS_IN_SECONDS);
   app.pot_test_timer = SWTimer_construct(100);                 // every 0.05 seconds
-  app.pot_test_timer = SWTimer_construct(MS_IN_SECONDS);       // default initialization
+  app.wait_cmd_timer = SWTimer_construct(0);                   // default initialization
+  app.linear_cmd_timer = SWTimer_construct(0);                 // default initialization
   app.adc_settling_timer = SWTimer_construct(ADC_SETTLE_TIME); // ADC timer for settling time
 
   app.pot_v = 0;
   app.pot_ohms = 0;
   app.pot_pos = 0;
 
+  app.target_pos = 0;
+  app.ramping_time = 0;
+  app.steps = 0;
+  app.step_time = 0;
+
   app.new_value_flag = 0;
 
-  app.serialState = Enabled;
+  app.appState = Enabled;
 
   return app;
 }
@@ -95,7 +101,7 @@ void Application_loop(Application *app_p)
   pollPotentiometer(app_p);
 
   // Handles serial inputs
-  handleSerialInput(app_p);
+  primaryFSM(app_p);
 
   // Check for change in data
   if (app_p->pot_pos != old_pot_pos)
@@ -123,31 +129,45 @@ void Application_loop(Application *app_p)
  * Attempts to execute a command from serial input.
  * Does not execute if the wait command is in play.
  */
-void handleSerialInput(Application *app_p)
+void primaryFSM(Application *app_p)
 {
-  _serialStates ss = app_p->serialState;
+  _appStates state = app_p->appState;
 
-  switch (ss)
+  switch (state)
   {
   case Enabled:
     checkSerialRX(app_p);
-    if (!SWTimer_expired(&app_p->wait_command_timer))
+    if (!SWTimer_expired(&app_p->wait_cmd_timer))
     {
-      ss = Waiting;
+      state = Waiting;
       Serial.println("  waiting...");
     }
+    if (app_p->steps != 0)
+      state = Linear;
+    break;
+
+  case Linear:
+    if (SWTimer_expired(&app_p->linear_cmd_timer))
+    {
+      int direction = app_p->target_pos > app_p->pot_pos ? 1 : -1;
+      pot.setPosition(app_p->pot_pos + direction);
+      app_p->steps--;
+      SWTimer_start(&app_p->linear_cmd_timer);
+    }
+    if (app_p->steps == 0)
+      state = Enabled;
     break;
 
   case Waiting:
-    if (SWTimer_expired(&app_p->wait_command_timer))
+    if (SWTimer_expired(&app_p->wait_cmd_timer))
     {
       Serial.println("  ...done waiting");
-      ss = Enabled;
+      state = Enabled;
     }
     break;
   }
 
-  app_p->serialState = ss;
+  app_p->appState = state;
 }
 
 // Checks serial RX pin for a new command, then attempts to execute it
@@ -183,7 +203,8 @@ void executeCommand(Application *app_p, String input)
 {
   // Return string, if needed
   String output_text = "Fail";
-  String arg = "";
+  String arg1 = "";
+  String arg2 = "";
 
   input.toLowerCase();
 
@@ -193,45 +214,70 @@ void executeCommand(Application *app_p, String input)
   // Executs the command based on the char, otherwise gives error message
   switch (cmd_type)
   {
-  case 't': // Throttle set command
-    arg = nextWord(input, 0);
-    if (isNumeric(arg))
-      pot.setPosition(arg.toInt());
+  case 'f': // Force set throttle command, 0 to 99
+    arg1 = nextWord(input, 0);
+    if (isNumeric(arg1))
+    {
+      int thr = arg1.toInt();
+      if (thr >= 0 && thr < 100)
+        pot.setPosition(thr);
+    }
     else
-      output_text = "  Bad argument for command 't': " + arg;
+      output_text = "  Bad argument for command 'f'";
     break;
 
-  case 'i': // Increment command
-    arg = nextWord(input, 0);
-    if(arg.equals("NULL")){
-      pot.incr();
+  case 't': // Linear ramp to throttle
+    arg1 = nextWord(input, 0);
+    arg2 = nextWord(input, 0);
+    if (isNumeric(arg1) && isNumeric(arg2))
+    {
+      int target = arg1.toInt();
+      int time = arg2.toInt();
+      if (target >= 0 && target < 100 && time > 0)
+      {
+        app_p->target_pos = target;
+        app_p->ramping_time = time;
+        app_p->steps = abs(target - app_p->pot_pos);
+        int step_time = app_p->ramping_time / (app_p->steps);
+        app_p->linear_cmd_timer = SWTimer_construct(step_time);
+        SWTimer_start(&app_p->linear_cmd_timer);
+      }
+      else
+        output_text = "  Throttle or time out of bounds: ";
     }
-    else if (isNumeric(arg))
-      pot.setPosition(app_p->pot_pos + arg.toInt());
     else
-      output_text = "  Bad argument for command 'i': " + arg;
+      output_text = "  Bad argument for command 't'";
     break;
 
-  case 'd': // Decrement command
-    arg = nextWord(input, 0);
-    if(arg.equals("NULL")){
-      pot.decr();
+  case 's': // Step command
+    arg1 = nextWord(input, 0);
+    if (isNumeric(arg1))
+    {
+      int new_pos = app_p->pot_pos + arg1.toInt();
+      if (new_pos >= 0 && new_pos < 100)
+        pot.setPosition(new_pos);
+      else
+        output_text = "  Throttle out of bounds";
     }
-    else if (isNumeric(arg))
-      pot.setPosition(app_p->pot_pos - arg.toInt());
     else
-      output_text = "  Bad argument for command 'd': " + arg;
+      output_text = "  Bad argument for command 's'";
     break;
 
   case 'w': // Wait command
-    arg = nextWord(input, 0);
-    if (isNumeric(arg))
+    arg1 = nextWord(input, 0);
+    if (isNumeric(arg1))
     {
-      app_p->wait_command_timer = SWTimer_construct(arg.toInt());
-      SWTimer_start(&app_p->wait_command_timer);
+      int time = arg1.toInt();
+      if (time > 0)
+      {
+        app_p->wait_cmd_timer = SWTimer_construct(time);
+        SWTimer_start(&app_p->wait_cmd_timer);
+      }
+      else
+        output_text = "  Time out of bounds";
     }
     else
-      output_text = "  Bad argument for command 'w': " + arg;
+      output_text = "  Bad argument for command 'w'";
     break;
 
   case 'r': // Read potentiometer command, effectively a dump
@@ -356,7 +402,7 @@ bool isNumeric(String str)
 {
   for (unsigned int i = 0; i < str.length(); i++)
   {
-    if (!isdigit(str.charAt(i)))
+    if (!(isdigit(str.charAt(i)) || str.charAt(i) == '-'))
       return false;
   }
   return true;
