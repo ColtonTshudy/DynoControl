@@ -62,7 +62,6 @@ struct _Application
     int target_pos;
     int ramping_time;
     int steps;
-    int step_time;
 
     _appStates appState;
 

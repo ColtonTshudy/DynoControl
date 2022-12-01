@@ -17,7 +17,7 @@
 #include <HAL\Timer.h>
 #include <X9C10X.h>
 
-#define VERSION 0.55
+#define VERSION 0.61 // Command format update
 
 Application app;       // Application struct
 X9C10X pot(POT_MAX_R); // Digital potentiometer
@@ -80,7 +80,6 @@ Application Application_construct()
   app.target_pos = 0;
   app.ramping_time = 0;
   app.steps = 0;
-  app.step_time = 0;
 
   app.new_value_flag = 0;
 
@@ -214,36 +213,34 @@ void executeCommand(Application *app_p, String input)
   // Executs the command based on the char, otherwise gives error message
   switch (cmd_type)
   {
-  case 'f': // Force set throttle command, 0 to 99
-    arg1 = nextWord(input, 0);
-    if (isNumeric(arg1))
-    {
-      int thr = arg1.toInt();
-      if (thr >= 0 && thr < 100)
-        pot.setPosition(thr);
-    }
-    else
-      output_text = "  Bad argument for command 'f'";
-    break;
-
   case 't': // Linear ramp to throttle
     arg1 = nextWord(input, 0);
     arg2 = nextWord(input, 0);
-    if (isNumeric(arg1) && isNumeric(arg2))
+    if (isNumeric(arg1))
     {
       int target = arg1.toInt();
-      int time = arg2.toInt();
-      if (target >= 0 && target < 100 && time > 0)
-      {
-        app_p->target_pos = target;
-        app_p->ramping_time = time;
-        app_p->steps = abs(target - app_p->pot_pos);
-        int step_time = app_p->ramping_time / (app_p->steps);
-        app_p->linear_cmd_timer = SWTimer_construct(step_time);
-        SWTimer_start(&app_p->linear_cmd_timer);
+      if (target >= 0 && target < 100)
+      { 
+        if (isNumeric(arg2))
+        {
+          int time = arg2.toInt();
+          if (time > 0)
+          {
+            app_p->target_pos = target;
+            app_p->ramping_time = time;
+            app_p->steps = abs(target - app_p->pot_pos);
+            int step_time = app_p->ramping_time / (app_p->steps);
+            app_p->linear_cmd_timer = SWTimer_construct(step_time);
+            SWTimer_start(&app_p->linear_cmd_timer);
+          }
+          else
+            output_text = "  Cannot use negative time";
+        }
+        else if (arg2.equals("NULL"))
+          pot.setPosition(target);
       }
       else
-        output_text = "  Throttle or time out of bounds: ";
+          output_text = "  Throttle out of bounds";
     }
     else
       output_text = "  Bad argument for command 't'";
@@ -285,8 +282,7 @@ void executeCommand(Application *app_p, String input)
     break;
 
   default:
-    output_text = "  Unknown command type: ";
-    output_text.concat(cmd_type);
+    output_text = "  Unknown command type";
     break;
   }
 
