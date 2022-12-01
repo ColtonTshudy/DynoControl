@@ -32,7 +32,8 @@
 
 typedef enum
 {
-    Enabled,
+    Idle,
+    Executing,
     Linear,
     Waiting
 } _appStates; // states for the serial reader
@@ -54,6 +55,7 @@ struct _Application
     SWTimer pot_test_timer;
     SWTimer adc_settling_timer;
     SWTimer linear_cmd_timer;
+    SWTimer data_step_timer;
 
     uint32_t pot_ohms;
     double pot_v;
@@ -66,6 +68,8 @@ struct _Application
     _appStates appState;
 
     bool new_value_flag;
+    
+    String command;
 };
 typedef struct _Application Application;
 
@@ -88,16 +92,13 @@ void WatchdogLED(Application *app_p);
 void primaryFSM(Application *app_p);
 
 /** Check serial RX and attempt to execute command */
-void checkSerialRX(Application *app_p);
+bool checkSerialRX(Application *app_p);
 
 /** Prints a value with a given prefix and suffix */
 void sprintln_uint(String pre, uint32_t val, String suf);
 
 /** Prints data from the application struct */
-void sprintData(Application *app_p);
-
-/** Prints a value with a given prefix and suffix */
-void sprintln_double(String pre, double val, String suf);
+void serialPrintData(Application *app_p);
 
 /** Cycles potentiometer for testing */
 void potSweep(Application *app_p);

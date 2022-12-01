@@ -16,6 +16,11 @@
 #ifndef HAL_H_a
 #define HAL_H_
 
+// Serial recieved and end transmission characters
+#define S_R_CHAR '<'
+#define S_E_CHAR '>'
+#define S_DATA_TIMESTEP 500 // ms
+
 // General HAL Macros
 #define BAUDRATE 115200
 
@@ -31,7 +36,7 @@
 #define POT_MES_PIN A0     // potentiometer voltage monitoring pin
 #define ADC_MAX 1024       // steps
 #define V_POT_MAX 4.71     // V
-#define ADC_SETTLE_TIME 20 // ms
+#define ADC_SETTLE_TIME 10 // ms
 
 // Settings for potentiometer
 #define POT_MAX_R 100000 // maximum resistance of the X9C104 potentiometer

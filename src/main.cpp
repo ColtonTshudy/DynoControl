@@ -8,7 +8,7 @@
  *
  * @author Colton Tshudy [please add your names here!]
  *
- * @version 10/12/2022
+ * @version 12/1/2022
  */
 
 #include <Arduino.h>
@@ -17,7 +17,7 @@
 #include <HAL\Timer.h>
 #include <X9C10X.h>
 
-#define VERSION 0.61 // Command format update
+#define VERSION 0.62 // Added serial support for Python
 
 Application app;       // Application struct
 X9C10X pot(POT_MAX_R); // Digital potentiometer
@@ -72,6 +72,7 @@ Application Application_construct()
   app.wait_cmd_timer = SWTimer_construct(0);                   // default initialization
   app.linear_cmd_timer = SWTimer_construct(0);                 // default initialization
   app.adc_settling_timer = SWTimer_construct(ADC_SETTLE_TIME); // ADC timer for settling time
+  app.data_step_timer = SWTimer_construct(S_DATA_TIMESTEP);    // time between data logs
 
   app.pot_v = 0;
   app.pot_ohms = 0;
@@ -83,7 +84,9 @@ Application Application_construct()
 
   app.new_value_flag = 0;
 
-  app.appState = Enabled;
+  app.command = "";
+
+  app.appState = Idle;
 
   return app;
 }
@@ -112,7 +115,7 @@ void Application_loop(Application *app_p)
   // Wait for ADC to settle before reading
   if (SWTimer_expired(&app_p->adc_settling_timer) && app_p->new_value_flag)
   {
-    sprintData(app_p);
+    serialPrintData(app_p);
     app_p->new_value_flag = 0;
   }
 
@@ -134,15 +137,28 @@ void primaryFSM(Application *app_p)
 
   switch (state)
   {
-  case Enabled:
-    checkSerialRX(app_p);
+  case Idle:
+    if(checkSerialRX(app_p))
+    {
+      Serial.println(S_R_CHAR);
+      executeCommand(app_p, app_p->command);
+      state = Executing;
+    }
+    break;
+
+  case Executing:
     if (!SWTimer_expired(&app_p->wait_cmd_timer))
     {
+      Serial.println("waiting...");
       state = Waiting;
-      Serial.println("  waiting...");
+      break;
     }
     if (app_p->steps != 0)
+    {
       state = Linear;
+      break;
+    }
+    state = Idle;
     break;
 
   case Linear:
@@ -153,15 +169,18 @@ void primaryFSM(Application *app_p)
       app_p->steps--;
       SWTimer_start(&app_p->linear_cmd_timer);
     }
-    if (app_p->steps == 0)
-      state = Enabled;
+    if (app_p->steps == 0){
+      Serial.println(S_E_CHAR);
+      state = Idle;
+    }
     break;
 
   case Waiting:
     if (SWTimer_expired(&app_p->wait_cmd_timer))
     {
-      Serial.println("  ...done waiting");
-      state = Enabled;
+      Serial.println("done.");
+      Serial.println(S_E_CHAR);
+      state = Idle;
     }
     break;
   }
@@ -170,7 +189,7 @@ void primaryFSM(Application *app_p)
 }
 
 // Checks serial RX pin for a new command, then attempts to execute it
-void checkSerialRX(Application *app_p)
+bool checkSerialRX(Application *app_p)
 {
   if (Serial.available() > 0)
   {
@@ -179,8 +198,10 @@ void checkSerialRX(Application *app_p)
     if (ECHO_EN)
       Serial.print(input); // echo
 
-    executeCommand(app_p, input);
+    app_p->command = input;
+    return true;
   }
+  return false;
 }
 
 /**
@@ -216,7 +237,7 @@ void executeCommand(Application *app_p, String input)
   case 't': // Linear ramp to throttle
     arg1 = nextWord(input, 0);
     arg2 = nextWord(input, 0);
-    if (isNumeric(arg1))
+    if (isNumeric(arg1)) // nested ifs are ugly, change to function calls
     {
       int target = arg1.toInt();
       if (target >= 0 && target < 100)
@@ -365,18 +386,16 @@ void sprintln_uint(String pre, uint32_t val, String suf)
   Serial.println(output);
 }
 
-void sprintData(Application *app_p)
+void serialPrintData(Application *app_p)
 {
   String data = "";
-  data.concat("  New pot pos: ");
-  data.concat(app_p->pot_pos);
-  data.concat("%\n");
-  data.concat("  New pot pos: ");
-  data.concat(app_p->pot_ohms);
-  data.concat(" Ohms\n");
-  data.concat("  New throttle voltage: ");
-  data.concat(app_p->pot_v);
-  data.concat(" V");
+  data.concat(millis());
+  data.concat(", ");
+  data.concat(app_p->pot_pos); // pot position
+  data.concat(", ");
+  data.concat(app_p->pot_ohms); // pot ohms
+  data.concat(", ");
+  data.concat(app_p->pot_v); // voltage at divider
 
   Serial.println(data);
 }
