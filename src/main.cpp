@@ -17,7 +17,7 @@
 #include <HAL\Timer.h>
 #include <X9C10X.h>
 
-#define VERSION 0.62 // Added serial support for Python
+#define VERSION 0.63 // Added continuous serial data output
 
 Application app;       // Application struct
 X9C10X pot(POT_MAX_R); // Digital potentiometer
@@ -105,16 +105,17 @@ void Application_loop(Application *app_p)
   // Handles serial inputs
   primaryFSM(app_p);
 
-  // Check for change in data
+  // Check for change in data. Used to forcibly capture high frequency changes
   if (app_p->pot_pos != old_pot_pos)
   {
     SWTimer_start(&app_p->adc_settling_timer);
     app_p->new_value_flag = 1;
   }
 
-  // Wait for ADC to settle before reading
-  if (SWTimer_expired(&app_p->adc_settling_timer) && app_p->new_value_flag)
+  // Output serial data every <S_DATA_TIMESTEP> ms
+  if (SWTimer_expired(&app_p->data_step_timer) || app_p->new_value_flag)
   {
+    SWTimer_start(&app_p->data_step_timer);
     serialPrintData(app_p);
     app_p->new_value_flag = 0;
   }
@@ -138,7 +139,7 @@ void primaryFSM(Application *app_p)
   switch (state)
   {
   case Idle:
-    if(checkSerialRX(app_p))
+    if (checkSerialRX(app_p))
     {
       Serial.println(S_R_CHAR);
       executeCommand(app_p, app_p->command);
@@ -158,6 +159,7 @@ void primaryFSM(Application *app_p)
       state = Linear;
       break;
     }
+    Serial.println(S_E_CHAR);
     state = Idle;
     break;
 
@@ -169,7 +171,8 @@ void primaryFSM(Application *app_p)
       app_p->steps--;
       SWTimer_start(&app_p->linear_cmd_timer);
     }
-    if (app_p->steps == 0){
+    if (app_p->steps == 0)
+    {
       Serial.println(S_E_CHAR);
       state = Idle;
     }
@@ -241,7 +244,7 @@ void executeCommand(Application *app_p, String input)
     {
       int target = arg1.toInt();
       if (target >= 0 && target < 100)
-      { 
+      {
         if (isNumeric(arg2))
         {
           int time = arg2.toInt();
@@ -261,7 +264,7 @@ void executeCommand(Application *app_p, String input)
           pot.setPosition(target);
       }
       else
-          output_text = "  Throttle out of bounds";
+        output_text = "  Throttle out of bounds";
     }
     else
       output_text = "  Bad argument for command 't'";
@@ -389,13 +392,14 @@ void sprintln_uint(String pre, uint32_t val, String suf)
 void serialPrintData(Application *app_p)
 {
   String data = "";
-  data.concat(millis());
-  data.concat(", ");
-  data.concat(app_p->pot_pos); // pot position
-  data.concat(", ");
-  data.concat(app_p->pot_ohms); // pot ohms
-  data.concat(", ");
   data.concat(app_p->pot_v); // voltage at divider
+  data.concat(" V, ");
+  data.concat(app_p->pot_pos); // pot position
+  data.concat("%, ");
+  data.concat(app_p->pot_ohms); // pot ohms
+  data.concat(" Ohms, ");
+  data.concat(millis()); // timestamp of measurement
+  data.concat(" ms");
 
   Serial.println(data);
 }
