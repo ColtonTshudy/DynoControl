@@ -17,8 +17,9 @@
 #define HAL_H_
 
 // Serial recieved and end transmission characters
-#define S_R_CHAR '<'
-#define S_E_CHAR '>'
+#define S_R_CHAR '<'        // transmission recieved char
+#define S_E_CHAR '>'        // transmission terminated char
+#define S_D_CHAR '['        // data begin char
 #define S_DATA_TIMESTEP 500 // ms
 
 // General HAL Macros

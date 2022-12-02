@@ -398,6 +398,7 @@ void sprintln_uint(String pre, uint32_t val, String suf)
 void serialPrintData(Application *app_p)
 {
   String data = "";
+  data.concat(S_D_CHAR);
   data.concat(app_p->pot_v); // voltage at divider
   data.concat(" V, ");
   data.concat(app_p->pot_pos); // pot position
