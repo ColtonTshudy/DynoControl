@@ -168,7 +168,6 @@ void primaryFSM(Application *app_p)
   case Executing:
     if (!SWTimer_expired(&app_p->wait_cmd_timer))
     {
-      Serial.println("waiting...");
       state = Waiting;
       break;
     }
@@ -177,7 +176,8 @@ void primaryFSM(Application *app_p)
       state = Linear;
       break;
     }
-    app_p->cmd_finished_flag = true;    state = Idle;
+    app_p->cmd_finished_flag = true;
+    state = Idle;
     break;
 
   case Linear:
@@ -199,7 +199,6 @@ void primaryFSM(Application *app_p)
     if (SWTimer_expired(&app_p->wait_cmd_timer))
     {
       app_p->cmd_finished_flag = true;
-      Serial.println("done.");
       state = Idle;
     }
     break;
