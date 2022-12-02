@@ -45,6 +45,10 @@ void setup()
   // Potentiometer initialization
   pot.begin(INC_PIN, UD_PIN, CS_PIN);
   pot.setPosition(0, true);
+
+  String startup = "";
+  startup.concat(S_E_CHAR);
+  Serial.println(startup);
 }
 
 /** =================================================
