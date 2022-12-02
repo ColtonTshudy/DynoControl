@@ -69,6 +69,7 @@ struct _Application
     _appStates appState;
 
     bool new_value_flag;
+    bool cmd_finished_flag;
     
     String command;
 };

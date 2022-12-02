@@ -4,6 +4,9 @@
  * @brief This is the main class for DynoControl, a firmware for Arduino to
  * control a 100k digital potentiometer to act as a surrogate throttle for BOLT
  *
+ * @bug Not a bug, but Arduino "String" is super terrible. Consider swapping for
+ * C++ strings or C char[]
+ *
  * @ingroup default
  *
  * @author Colton Tshudy [please add your names here!]
@@ -17,7 +20,7 @@
 #include <HAL\Timer.h>
 #include <X9C10X.h>
 
-#define VERSION 0.63 // Added continuous serial data output
+#define VERSION 0.64 // Changed serial sequencing of command termination character
 
 Application app;       // Application struct
 X9C10X pot(POT_MAX_R); // Digital potentiometer
@@ -88,6 +91,7 @@ Application Application_construct()
   app.steps = 0;
 
   app.new_value_flag = 0;
+  app.cmd_finished_flag = 0;
 
   app.command = "";
 
@@ -107,9 +111,6 @@ void Application_loop(Application *app_p)
   // Poll potentiometer
   pollPotentiometer(app_p);
 
-  // Handles serial inputs
-  primaryFSM(app_p);
-
   // Check for change in data. Used to forcibly capture high frequency changes
   if (app_p->pot_pos != old_pot_pos)
   {
@@ -124,6 +125,18 @@ void Application_loop(Application *app_p)
     serialPrintData(app_p);
     app_p->new_value_flag = 0;
   }
+
+  // This could be printed during state transitions, but placing it here allows
+  // for one final serial print of measurements before it tells serial that a
+  // command has concluded
+  if (app_p->cmd_finished_flag)
+  {
+    app_p->cmd_finished_flag = false;
+    Serial.println(S_E_CHAR);
+  }
+
+  // Handles serial command inputs
+  primaryFSM(app_p);
 
   old_pot_pos = app_p->pot_pos;
 }
@@ -164,8 +177,7 @@ void primaryFSM(Application *app_p)
       state = Linear;
       break;
     }
-    Serial.println(S_E_CHAR);
-    state = Idle;
+    app_p->cmd_finished_flag = true;    state = Idle;
     break;
 
   case Linear:
@@ -178,7 +190,7 @@ void primaryFSM(Application *app_p)
     }
     if (app_p->steps == 0)
     {
-      Serial.println(S_E_CHAR);
+      app_p->cmd_finished_flag = true;
       state = Idle;
     }
     break;
@@ -186,8 +198,8 @@ void primaryFSM(Application *app_p)
   case Waiting:
     if (SWTimer_expired(&app_p->wait_cmd_timer))
     {
+      app_p->cmd_finished_flag = true;
       Serial.println("done.");
-      Serial.println(S_E_CHAR);
       state = Idle;
     }
     break;
