@@ -60,6 +60,7 @@ struct _Application
     uint32_t pot_ohms;
     double pot_v;
     uint8_t pot_pos;
+    unsigned long mes_timestamp;
 
     int target_pos;
     int ramping_time;

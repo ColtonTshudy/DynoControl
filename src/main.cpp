@@ -77,6 +77,7 @@ Application Application_construct()
   app.pot_v = 0;
   app.pot_ohms = 0;
   app.pot_pos = 0;
+  app.mes_timestamp = 0;
 
   app.target_pos = 0;
   app.ramping_time = 0;
@@ -217,6 +218,7 @@ void pollPotentiometer(Application *app_p)
   app_p->pot_v = double(analogRead(POT_MES_PIN)) / ADC_MAX * V_POT_MAX;
   app_p->pot_ohms = pot.getOhm();
   app_p->pot_pos = pot.getPosition();
+  app_p->mes_timestamp = millis();
 }
 
 /**
@@ -398,7 +400,7 @@ void serialPrintData(Application *app_p)
   data.concat("%, ");
   data.concat(app_p->pot_ohms); // pot ohms
   data.concat(" Ohms, ");
-  data.concat(millis()); // timestamp of measurement
+  data.concat(app_p->mes_timestamp); // timestamp of measurement
   data.concat(" ms");
 
   Serial.println(data);
