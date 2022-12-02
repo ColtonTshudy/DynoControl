@@ -20,7 +20,7 @@
 #include <HAL\Timer.h>
 #include <X9C10X.h>
 
-#define VERSION 0.64 // Changed serial sequencing of command termination character
+#define VERSION 0.65 // Changed serial sequencing of command termination character
 
 Application app;       // Application struct
 X9C10X pot(POT_MAX_R); // Digital potentiometer
@@ -90,7 +90,7 @@ Application Application_construct()
   app.ramping_time = 0;
   app.steps = 0;
 
-  app.new_value_flag = 0;
+  app.new_value_flag = 1;
   app.cmd_finished_flag = 0;
 
   app.command = "";
@@ -411,13 +411,12 @@ void serialPrintData(Application *app_p)
   String data = "";
   data.concat(S_D_CHAR);
   data.concat(app_p->pot_v); // voltage at divider
-  data.concat(" V, ");
+  data.concat(",");
   data.concat(app_p->pot_pos); // pot position
-  data.concat("%, ");
+  data.concat(",");
   data.concat(app_p->pot_ohms); // pot ohms
-  data.concat(" Ohms, ");
+  data.concat(",");
   data.concat(app_p->mes_timestamp); // timestamp of measurement
-  data.concat(" ms");
 
   Serial.println(data);
 }
