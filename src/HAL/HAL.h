@@ -20,6 +20,7 @@
 #define S_R_CHAR '<'        // transmission recieved char
 #define S_E_CHAR '>'        // transmission terminated char
 #define S_D_CHAR '['        // data begin char
+#define S_HP_CHAR '!'       // high priority command char
 
 // Pins for LEDs
 #define LED_PIN 13

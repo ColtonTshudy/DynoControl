@@ -28,12 +28,13 @@
 
 /* Parameters */
 #define BAUDRATE 115200 // baud/s
-#define S_TIMEOUT 5     // ms until serial input scan ends
+#define S_TIMEOUT 1000     // ms until serial input scan ends
 
 /* Macros */
 #define MS_IN_SECONDS 1000 // milliseconds in a second
 #define ASCII_SPACE 32
-#define ASCII_ENTER 10
+#define ASCII_LF 10
+#define ASCII_CR 13
 #define CMD_CHAR_LEN 20    // maximum length of commands in chars
 
 typedef enum
@@ -77,6 +78,7 @@ struct _Application
 
     bool new_value_flag;
     bool cmd_finished_flag;
+    bool cmd_high_priority;
     
     String command;
 };
@@ -92,7 +94,7 @@ void Application_loop(Application *app_p);
 void InitializePins();
 
 /** Store new potentiometer values from the pot object and real measurements */
-void pollPotentiometer(Application *app_p);
+void pollPot(Application *app_p);
 
 /** Heatbeat of the Arduino */
 void WatchdogLED(Application *app_p);
@@ -120,5 +122,11 @@ String nextWord(String input, bool reset);
 
 /** Returns true if the given string is only numeric */
 bool isNumeric(String str);
+
+/** Raises specific flags for high priority commands */
+void checkPriority(Application *app_p, char* cmd);
+
+/** Resets the application variables and states */
+void resetApplication(Application *app_p);
 
 #endif /* APPLICATION_H_ */

@@ -36,7 +36,7 @@ void setup()
   // Begins UART communication
   Serial.begin(BAUDRATE);
 
-  // Print version number
+  // Startup message
   String startup_message = "";
   startup_message.concat("Throttle Mapper Ver. ");
   startup_message.concat(VERSION);
@@ -49,9 +49,9 @@ void setup()
   pot.begin(INC_PIN, UD_PIN, CS_PIN);
   pot.setPosition(0, true);
 
-  String startup = "";
-  startup.concat(S_E_CHAR);
-  Serial.println(startup);
+  delay(20); // Startup delay
+
+  Serial.println(S_E_CHAR);
 }
 
 /** =================================================
@@ -93,6 +93,7 @@ Application Application_construct()
 
   app.new_value_flag = 1;
   app.cmd_finished_flag = 0;
+  app.cmd_high_priority = 0;
 
   app.command = "";
 
@@ -110,7 +111,7 @@ void Application_loop(Application *app_p)
   static uint32_t old_pot_pos = 0;
 
   // Poll potentiometer
-  pollPotentiometer(app_p);
+  pollPot(app_p);
 
   // Check for change in data. Used to forcibly capture high frequency changes
   if (app_p->pot_pos != old_pot_pos)
@@ -139,6 +140,13 @@ void Application_loop(Application *app_p)
   // Handles serial command inputs
   primaryFSM(app_p);
 
+  // Handles high priority commands
+  if(app_p->cmd_high_priority)
+  {
+    Serial.println(S_HP_CHAR);
+    executeCommand(app_p, app_p->command);
+  }
+
   old_pot_pos = app_p->pot_pos;
 }
 
@@ -154,11 +162,12 @@ void Application_loop(Application *app_p)
 void primaryFSM(Application *app_p)
 {
   _appStates state = app_p->appState;
+  bool cmd_in_queue = checkSerialRX(app_p);
 
   switch (state)
   {
   case Idle:
-    if (checkSerialRX(app_p))
+    if (cmd_in_queue)
     {
       Serial.println(S_R_CHAR);
       executeCommand(app_p, app_p->command);
@@ -216,13 +225,18 @@ bool checkSerialRX(Application *app_p)
 
   // When the first character is recieved, keep reading until a newline
   // character or timeout
-  if (Serial.available() > 0)
+  if (Serial.available())
   {
     SWTimer_start(&app_p->serial_timeout_timer);
-    input[ser_i] = Serial.read();
+    char serialChar = Serial.read();
+    if(serialChar == ASCII_CR)
+      serialChar = ASCII_LF;
+    input[ser_i] = serialChar;
 
-    if (input[ser_i] == ASCII_ENTER)
+    if (input[ser_i] == ASCII_LF)
     {
+      checkPriority(app_p, input);
+      
       if (ECHO_EN)
         Serial.print(input); // echo
 
@@ -246,7 +260,7 @@ bool checkSerialRX(Application *app_p)
  * Polls the potentiometer object for new values, and uses the ADC to measure
  * the actual voltage at the divider created by the potentiometer
  */
-void pollPotentiometer(Application *app_p)
+void pollPot(Application *app_p)
 {
   // Poll for new potentiometer values
   app_p->pot_v = double(analogRead(POT_MES_PIN)) / ADC_MAX * V_POT_MAX;
@@ -286,7 +300,6 @@ void executeCommand(Application *app_p, String input)
           uint64_t time = arg2.toInt();
           if (time > 0)
           {
-            Serial.print((unsigned long)time);
             app_p->target_pos = target;
             app_p->ramping_time = time;
             app_p->steps = abs(target - app_p->pot_pos);
@@ -342,6 +355,11 @@ void executeCommand(Application *app_p, String input)
     app_p->new_value_flag = 1;
     break;
 
+  case 'q': // Quit command, terminate program and reset (High Priority)
+    app_p->cmd_high_priority = false;
+    resetApplication(app_p);
+    break;
+
   default:
     output_text = "  Unknown command type";
     break;
@@ -373,7 +391,7 @@ String nextWord(String input, bool reset)
     switch (state)
     {
     case Spaces:
-      if (c == ASCII_ENTER || c == ASCII_SPACE)
+      if (c == ASCII_LF || c == ASCII_SPACE)
         ; // stay in Spaces state
       else
       {
@@ -383,12 +401,15 @@ String nextWord(String input, bool reset)
       break;
 
     case Reading:
-      if (c == ASCII_ENTER || c == ASCII_SPACE)
+      if (c == ASCII_LF || c == ASCII_SPACE)
       {
         String word = input.substring(cur, i);
         cur = i + 1;
         return word;
       }
+      break;
+
+    default:
       break;
     }
   }
@@ -464,8 +485,28 @@ bool isNumeric(String str)
   return true;
 }
 
+void checkPriority(Application *app_p, char* cmd)
+{
+  switch(cmd[0])
+  {
+  case 'q': // Quit command
+    app_p->cmd_high_priority = true;
+    break;
+  default:
+    break;
+  }
+}
+
+void resetApplication(Application *app_p)
+{
+  pot.setPosition(0);
+  *app_p = Application_construct();
+}
+
+
+// DEPRECIATED OR FOR TESTING ONLY
 /**
- * Cycles potentiometer between 0 and 99% for testing
+ * Continuously cycles potentiometer from 0% to 99%
  */
 void potSweep(Application *app_p)
 {
