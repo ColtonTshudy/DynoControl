@@ -24,11 +24,17 @@
 
 /* Settings */
 #define ECHO_EN 1
+#define S_DATA_TIMESTEP 500 // ms
+
+/* Parameters */
+#define BAUDRATE 115200 // baud/s
+#define S_TIMEOUT 1000  // ms until serial input scan ends
 
 /* Macros */
 #define MS_IN_SECONDS 1000 // milliseconds in a second
 #define ASCII_SPACE 32
 #define ASCII_ENTER 10
+#define CMD_CHAR_LEN 20    // maximum length of commands in chars
 
 typedef enum
 {
@@ -56,6 +62,7 @@ struct _Application
     SWTimer adc_settling_timer;
     SWTimer linear_cmd_timer;
     SWTimer data_step_timer;
+    SWTimer serial_timeout_timer;
 
     uint32_t pot_ohms;
     double pot_v;

@@ -80,6 +80,7 @@ Application Application_construct()
   app.linear_cmd_timer = SWTimer_construct(0);                 // default initialization
   app.adc_settling_timer = SWTimer_construct(ADC_SETTLE_TIME); // ADC timer for settling time
   app.data_step_timer = SWTimer_construct(S_DATA_TIMESTEP);    // time between data logs
+  app.serial_timeout_timer = SWTimer_construct(S_TIMEOUT);     // time between data logs
 
   app.pot_v = 0;
   app.pot_ohms = 0;
@@ -210,16 +211,34 @@ void primaryFSM(Application *app_p)
 // Checks serial RX pin for a new command, then attempts to execute it
 bool checkSerialRX(Application *app_p)
 {
+  static uint8_t ser_i = 0;
+  static char input[CMD_CHAR_LEN];
+
+  // When the first character is recieved, keep reading until a newline
+  // character or timeout
   if (Serial.available() > 0)
   {
-    String input = Serial.readString();
+    SWTimer_start(&app_p->serial_timeout_timer);
+    input[ser_i] = Serial.read();
 
-    if (ECHO_EN)
-      Serial.print(input); // echo
+    if (input[ser_i] == ASCII_ENTER)
+    {
+      if (ECHO_EN)
+        Serial.print(input); // echo
 
-    app_p->command = input;
-    return true;
+      app_p->command = input;
+      return true;
+    }
+
+    ser_i++;
   }
+
+  if (SWTimer_expired(&app_p->serial_timeout_timer) || ser_i >= CMD_CHAR_LEN)
+  {
+    ser_i = 0;
+    memset(input, '\0', CMD_CHAR_LEN);
+  }
+
   return false;
 }
 

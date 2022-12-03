@@ -20,10 +20,6 @@
 #define S_R_CHAR '<'        // transmission recieved char
 #define S_E_CHAR '>'        // transmission terminated char
 #define S_D_CHAR '['        // data begin char
-#define S_DATA_TIMESTEP 500 // ms
-
-// General HAL Macros
-#define BAUDRATE 115200
 
 // Pins for LEDs
 #define LED_PIN 13
