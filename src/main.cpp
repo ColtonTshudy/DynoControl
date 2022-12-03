@@ -20,7 +20,7 @@
 #include <HAL\Timer.h>
 #include <X9C10X.h>
 
-#define VERSION 0.65 // Changed serial sequencing of command termination character
+#define VERSION 0.70 // Changed serial sequencing of command termination character
 
 Application app;       // Application struct
 X9C10X pot(POT_MAX_R); // Digital potentiometer

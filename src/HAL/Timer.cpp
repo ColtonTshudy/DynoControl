@@ -27,9 +27,8 @@ void SWTimer_start(SWTimer *timer_p)
 // Returns number of elapsed milliseconds
 uint64_t SWTimer_elapsedTimeMS(SWTimer *timer_p)
 {
-    uint64_t elapsed_us = millis() - timer_p->startCounter;
-
-    return elapsed_us;
+    uint64_t elapsed_ms = millis() - timer_p->startCounter;
+    return elapsed_ms;
 }
 
 // Returns true if the timer is expired
@@ -51,18 +50,14 @@ bool SWTimer_expired(SWTimer *timer_p)
 double SWTimer_percentElapsed(SWTimer *timer_p)
 {
     if (timer_p->waitTime_ms == 0)
-    {
         return 1.0;
-    }
 
     uint64_t elapsed_ms = SWTimer_elapsedTimeMS(timer_p);
 
     double result = (double)elapsed_ms / (double)timer_p->waitTime_ms;
 
     if (result > 1.0)
-    {
         return 1.0;
-    }
 
     return result;
 }

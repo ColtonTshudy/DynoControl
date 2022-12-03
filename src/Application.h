@@ -28,7 +28,7 @@
 
 /* Parameters */
 #define BAUDRATE 115200 // baud/s
-#define S_TIMEOUT 1000  // ms until serial input scan ends
+#define S_TIMEOUT 5     // ms until serial input scan ends
 
 /* Macros */
 #define MS_IN_SECONDS 1000 // milliseconds in a second
