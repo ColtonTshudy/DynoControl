@@ -70,7 +70,7 @@ struct _Application
     unsigned long mes_timestamp;
 
     int target_pos;
-    int ramping_time;
+    uint64_t ramping_time;
     int steps;
 
     _appStates appState;

@@ -283,18 +283,19 @@ void executeCommand(Application *app_p, String input)
       {
         if (isNumeric(arg2))
         {
-          int time = arg2.toInt();
+          uint64_t time = arg2.toInt();
           if (time > 0)
           {
+            Serial.print((unsigned long)time);
             app_p->target_pos = target;
             app_p->ramping_time = time;
             app_p->steps = abs(target - app_p->pot_pos);
-            int step_time = app_p->ramping_time / (app_p->steps);
+            uint64_t step_time = app_p->ramping_time / (app_p->steps);
             app_p->linear_cmd_timer = SWTimer_construct(step_time);
             SWTimer_start(&app_p->linear_cmd_timer);
           }
           else
-            output_text = "  Cannot use negative time";
+            output_text = "  Time out of bounds";
         }
         else if (arg2.equals("NULL"))
           pot.setPosition(target);
