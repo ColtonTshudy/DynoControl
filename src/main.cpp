@@ -4,8 +4,8 @@
  * @brief This is the main class for DynoControl, a firmware for Arduino to
  * control a 100k digital potentiometer to act as a surrogate throttle for BOLT
  *
- * @bug Not a bug, but Arduino "String" is super terrible. Consider swapping for
- * C++ strings or C char[]
+ * @bug Not a bug, but Arduino "String" is super terrible for memory management.
+ * Consider swapping for char[]
  *
  * @ingroup default
  *
@@ -20,7 +20,7 @@
 #include <HAL\Timer.h>
 #include <X9C10X.h>
 
-#define VERSION 0.71 // Changed serial sequencing of command termination character
+#define VERSION 0.72 // Cleared command buffer when a command is recieved
 
 Application app;       // Application struct
 X9C10X pot(POT_MAX_R); // Digital potentiometer
@@ -142,10 +142,7 @@ void Application_loop(Application *app_p)
 
   // Handles high priority commands
   if(app_p->cmd_high_priority)
-  {
-    serialPrintChar(S_HP_CHAR);
     executeCommand(app_p, app_p->command);
-  }
 
   old_pot_pos = app_p->pot_pos;
 }
@@ -222,6 +219,7 @@ bool checkSerialRX(Application *app_p)
 {
   static uint8_t ser_i = 0;
   static char input[CMD_CHAR_LEN];
+  bool valid_cmd = false;
 
   // When the first character is recieved, keep reading until a newline
   // character or timeout
@@ -241,19 +239,20 @@ bool checkSerialRX(Application *app_p)
         Serial.print(input); // echo
 
       app_p->command = input;
-      return true;
+      valid_cmd = true;
     }
 
     ser_i++;
   }
 
-  if (SWTimer_expired(&app_p->serial_timeout_timer) || ser_i >= CMD_CHAR_LEN)
+  // Reset command buffer
+  if (SWTimer_expired(&app_p->serial_timeout_timer) || ser_i >= CMD_CHAR_LEN || valid_cmd)
   {
     ser_i = 0;
     memset(input, '\0', CMD_CHAR_LEN);
   }
 
-  return false;
+  return valid_cmd;
 }
 
 /**
