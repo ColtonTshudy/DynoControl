@@ -6,9 +6,9 @@
  *
  * @ingroup default
  *
- * @author Colton Tshudy [please add your names here!]
+ * @author Colton Tshudy
  *
- * @version 10/12/2022
+ * @version 12/4/2022
  */
 
 /* Arduino Includes */
@@ -105,9 +105,6 @@ void primaryFSM(Application *app_p);
 /** Check serial RX and attempt to execute command */
 bool checkSerialRX(Application *app_p);
 
-/** Prints a value with a given prefix and suffix */
-void sprintln_uint(String pre, uint32_t val, String suf);
-
 /** Prints data from the application struct */
 void serialPrintData(Application *app_p);
 
@@ -122,6 +119,9 @@ String nextWord(String input, bool reset);
 
 /** Returns true if the given string is only numeric */
 bool isNumeric(String str);
+
+/** Prints a single char terminated by '\0'*/
+void serialPrintChar(char c);
 
 /** Raises specific flags for high priority commands */
 void checkPriority(Application *app_p, char* cmd);
