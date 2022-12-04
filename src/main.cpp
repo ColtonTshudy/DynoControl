@@ -9,9 +9,9 @@
  *
  * @ingroup default
  *
- * @author Colton Tshudy [please add your names here!]
+ * @author Colton Tshudy
  *
- * @version 12/1/2022
+ * @version 12/4/2022
  */
 
 #include <Arduino.h>
@@ -20,7 +20,7 @@
 #include <HAL\Timer.h>
 #include <X9C10X.h>
 
-#define VERSION 0.70 // Changed serial sequencing of command termination character
+#define VERSION 0.71 // Changed serial sequencing of command termination character
 
 Application app;       // Application struct
 X9C10X pot(POT_MAX_R); // Digital potentiometer
@@ -51,7 +51,7 @@ void setup()
 
   delay(20); // Startup delay
 
-  Serial.println(S_E_CHAR);
+  serialPrintChar(S_E_CHAR);
 }
 
 /** =================================================
@@ -134,7 +134,7 @@ void Application_loop(Application *app_p)
   if (app_p->cmd_finished_flag)
   {
     app_p->cmd_finished_flag = false;
-    Serial.println(S_E_CHAR);
+    serialPrintChar(S_E_CHAR);
   }
 
   // Handles serial command inputs
@@ -143,7 +143,7 @@ void Application_loop(Application *app_p)
   // Handles high priority commands
   if(app_p->cmd_high_priority)
   {
-    Serial.println(S_HP_CHAR);
+    serialPrintChar(S_HP_CHAR);
     executeCommand(app_p, app_p->command);
   }
 
@@ -169,7 +169,7 @@ void primaryFSM(Application *app_p)
   case Idle:
     if (cmd_in_queue)
     {
-      Serial.println(S_R_CHAR);
+      serialPrintChar(S_R_CHAR);
       executeCommand(app_p, app_p->command);
       state = Executing;
     }
@@ -417,9 +417,7 @@ String nextWord(String input, bool reset)
   return "NULL";
 }
 
-/**
- * Sets up pin states
- */
+// Pin state setup
 void InitializePins()
 {
   pinMode(LED_PIN, OUTPUT);
@@ -441,12 +439,6 @@ void WatchdogLED(Application *app_p)
   }
 }
 
-void sprintln_uint(String pre, uint32_t val, String suf)
-{
-  String output = pre + val + suf;
-  Serial.println(output);
-}
-
 void serialPrintData(Application *app_p)
 {
   String data = "";
@@ -462,10 +454,11 @@ void serialPrintData(Application *app_p)
   Serial.println(data);
 }
 
-void sprintln_double(String pre, double val, String suf)
+void serialPrintChar(char c)
 {
-  String output = pre + val + suf;
-  Serial.println(output);
+  char message[2];
+  snprintf(message, 2, "%c", c);
+  Serial.println(message);
 }
 
 /**
