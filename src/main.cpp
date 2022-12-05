@@ -121,11 +121,15 @@ void Application_loop(Application *app_p)
   }
 
   // Output serial data every <S_DATA_TIMESTEP> ms
-  if (SWTimer_expired(&app_p->data_step_timer) || app_p->new_value_flag)
+  // Wait after pot % changes to allow ADC to settle
+  if (SWTimer_expired(&app_p->adc_settling_timer))
   {
-    SWTimer_start(&app_p->data_step_timer);
-    serialPrintData(app_p);
-    app_p->new_value_flag = 0;
+    if (SWTimer_expired(&app_p->data_step_timer) || app_p->new_value_flag)
+    {
+      SWTimer_start(&app_p->data_step_timer);
+      serialPrintData(app_p);
+      app_p->new_value_flag = 0;
+    }
   }
 
   // This could be printed during state transitions, but placing it here allows
@@ -259,6 +263,8 @@ bool checkSerialRX(Application *app_p)
  * Polls the potentiometer object for new values, and uses the ADC to measure
  * the actual voltage at the divider created by the potentiometer
  */
+// this uses analogread, which is blocking.
+// consider changing to non-blocking analogread function
 void pollPot(Application *app_p)
 {
   // Poll for new potentiometer values
