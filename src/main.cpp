@@ -20,7 +20,7 @@
 #include <HAL\Timer.h>
 #include <X9C10X.h>
 
-#define VERSION 0.72 // Cleared command buffer when a command is recieved
+#define VERSION 0.72 // Added ADC settling timer back
 
 Application app;       // Application struct
 X9C10X pot(POT_MAX_R); // Digital potentiometer
