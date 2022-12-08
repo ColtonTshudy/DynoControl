@@ -146,8 +146,10 @@ void Application_loop(Application *app_p)
 
   // Handles high priority commands
   if(app_p->cmd_high_priority)
+  {
+    serialPrintChar(S_HP_CHAR);
     executeCommand(app_p, app_p->command);
-
+  }
   old_pot_pos = app_p->pot_pos;
 }
 
