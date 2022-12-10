@@ -24,7 +24,7 @@
 
 /* Settings */
 #define ECHO_EN 1
-#define S_DATA_TIMESTEP 500 // ms
+#define S_DATA_TIMESTEP 250 // ms
 
 /* Parameters */
 #define BAUDRATE 115200 // baud/s
